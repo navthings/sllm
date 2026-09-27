@@ -12,7 +12,7 @@ lf = open("mnist/train-labels-idx1-ubyte", "rb")
 lf.read(8)
 labels = lf.read()
 
-
+# get the pixels for a image
 def get_image(i):
     start = i * 784
     raw = images[start:start + 784]
@@ -67,8 +67,13 @@ def loss(out, target):
 
 
 # build the network
-hidden_w, hidden_b = make_layer(784, 32)
-out_w, out_b = make_layer(32, 10)
+if os.path.exists("weights.json"):
+    with open("weights.json") as f:
+        hidden_w, hidden_b, out_w, out_b = json.load(f)
+    print("loaded saved weights")
+else:
+    hidden_w, hidden_b = make_layer(784, 32)
+    out_w, out_b = make_layer(32, 10)
 
 lr = 0.5
 
@@ -124,3 +129,4 @@ t = int(input('training steps: '))
 train(t)
 with open("weights.json", "w") as f:
     json.dump([hidden_w, hidden_b, out_w, out_b], f)
+    print("saved weights")
