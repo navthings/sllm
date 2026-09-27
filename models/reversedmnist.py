@@ -12,17 +12,7 @@ lf = open("mnist/train-labels-idx1-ubyte", "rb")
 lf.read(8)
 labels = lf.read()
 
-# testing
-tf = open("mnist/t10k-images-idx3-ubyte", "rb")
-tf.read(16)
-test_images = tf.read()
 
-tlf = open("mnist/t10k-labels-idx1-ubyte", "rb")
-tlf.read(8)
-test_labels = tlf.read()
-
-
-# get the pixels for a image
 def get_image(i):
     start = i * 784
     raw = images[start:start + 784]
@@ -34,6 +24,8 @@ def get_image(i):
 
 # network pieces
 def sigmoid(x):
+    # clamp so math.exp can't overflow if a total gets huge
+    x = max(-50, min(50, x))
     return 1 / (1 + math.exp(-x))
 
 
@@ -76,93 +68,115 @@ def loss(out, target):
     return total
 
 
+# nudge one layer's weights and biases using its blame
+def nudge(weights, biases, blame, inputs):
+    for j in range(len(weights)):
+        for p in range(len(inputs)):
+            weights[j][p] -= lr * blame[j] * inputs[p]
+        biases[j] -= lr * blame[j]
+
+
+# pass blame back through a layer to whatever fed into it
+def blame_back(blame, weights, said):
+    back = []
+    for p in range(len(said)):
+        total = 0
+        for j in range(len(blame)):
+            total += blame[j] * weights[j][p]
+        back.append(total * said[p] * (1 - said[p]))
+    return back
+
+
 # build the network
+# describer: 784 pixels -> 32 hidden -> 2 style numbers
+# drawer: 10 digit + 2 style -> 32 hidden -> 784 pixels
+STYLES = 2
+
 if os.path.exists("reversed_weights.json"):
     with open("reversed_weights.json") as f:
-        hidden_w, hidden_b, out_w, out_b = json.load(f)
+        enc_hw, enc_hb, enc_ow, enc_ob, dec_hw, dec_hb, dec_ow, dec_ob = json.load(f)
     print("loaded saved weights")
 else:
-    hidden_w, hidden_b = make_layer(784, 32)
-    out_w, out_b = make_layer(32, 10)
+    enc_hw, enc_hb = make_layer(784, 32)
+    enc_ow, enc_ob = make_layer(32, STYLES)
+    dec_hw, dec_hb = make_layer(10 + STYLES, 32)
+    dec_ow, dec_ob = make_layer(32, 784)
 
-lr = 0.5
+lr = 0.2
 
 
-# one training step on picture i
 def train_step(i):
-    # guess
     img = get_image(i)
-    h = layer(img, hidden_w, hidden_b)
-    out = layer(h, out_w, out_b)
-    target = make_target(labels[i])
 
-    # blame for digit judges
+    # describer looks at the real picture
+    eh = layer(img, enc_hw, enc_hb)
+    style = layer(eh, enc_ow, enc_ob)
+
+    # drawer gets the digit plus the style
+    inp = make_target(labels[i]) + style
+    dh = layer(inp, dec_hw, dec_hb)
+    out = layer(dh, dec_ow, dec_ob)
+
+    # blame for pixel judges
     out_blame = []
-    for k in range(10):
+    for k in range(784):
         said = out[k]
-        wanted = target[k]
-        out_blame.append((said - wanted) * said * (1 - said))
+        out_blame.append((said - img[k]) * said * (1 - said))
 
-    # blame for hidden judges
-    hidden_blame = []
-    for j in range(32):
-        total = 0
-        for k in range(10):
-            total += out_blame[k] * out_w[k][j]
-        said = h[j]
-        hidden_blame.append(total * said * (1 - said))
+    # blame flows back: drawer hidden, then style numbers, then describer hidden
+    dh_blame = blame_back(out_blame, dec_ow, dh)
+    inp_blame = blame_back(dh_blame, dec_hw, inp)
+    style_blame = inp_blame[10:]
+    eh_blame = blame_back(style_blame, enc_ow, eh)
 
-    # nudge digit judges
-    for k in range(10):
-        for j in range(32):
-            out_w[k][j] -= lr * out_blame[k] * h[j]
-        out_b[k] -= lr * out_blame[k]
+    # nudge every layer
+    nudge(dec_ow, dec_ob, out_blame, dh)
+    nudge(dec_hw, dec_hb, dh_blame, inp)
+    nudge(enc_ow, enc_ob, style_blame, eh)
+    nudge(enc_hw, enc_hb, eh_blame, img)
 
-    # nudge hidden judges
-    for j in range(32):
-        for p in range(784):
-            hidden_w[j][p] -= lr * hidden_blame[j] * img[p]
-        hidden_b[j] -= lr * hidden_blame[j]
-
-    return loss(out, target)
+    return loss(out, img)
 
 
-# draw a test picture and show the network's guess
-def show(i):
-    start = i * 784
-    raw = test_images[start:start + 784]
+# draw a digit with the style numbers you pick
+def show(digit, style):
+    inp = make_target(digit) + style
+    dh = layer(inp, dec_hw, dec_hb)
+    out = layer(dh, dec_ow, dec_ob)
 
-    # draw it
     for r in range(28):
         line = ""
         for c in range(28):
-            if raw[r * 28 + c] > 128:
+            p = out[r * 28 + c]
+            if p > 0.6:
                 line += "##"
+            elif p > 0.3:
+                line += ".."
             else:
                 line += "  "
         print(line)
 
-    # guess
-    img = []
-    for p in raw:
-        img.append(p / 255)
-    h = layer(img, hidden_w, hidden_b)
-    out = layer(h, out_w, out_b)
-    print("guess:", out.index(max(out)), "answer:", test_labels[i])
-
 
 # training loop
 def train(steps):
+    total = 0
     for i in range(steps):
-        idx = random.randint(0, 59999)
-        l = train_step(idx)
-        print(i, l)
+        total += train_step(random.randint(0, len(labels) - 1))
+        if i % 100 == 99:
+            print(i + 1, total / 100)
+            total = 0
 
 
-t = int(input('training steps: '))
+t = int(input("training steps: "))
 train(t)
 with open("reversed_weights.json", "w") as f:
-    json.dump([hidden_w, hidden_b, out_w, out_b], f)
+    json.dump([enc_hw, enc_hb, enc_ow, enc_ob, dec_hw, dec_hb, dec_ow, dec_ob], f)
 print("saved weights")
 
-show(random.randint(0, 9999))
+while True:
+    d = int(input("digit to draw (or -1 to quit): "))
+    if d == -1:
+        break
+    s1 = float(input("style 1 (0 to 1): "))
+    s2 = float(input("style 2 (0 to 1): "))
+    show(d, [s1, s2])
