@@ -1,4 +1,4 @@
-import json 
+import json
 import os
 import math
 import random
@@ -11,6 +11,16 @@ images = f.read()
 lf = open("mnist/train-labels-idx1-ubyte", "rb")
 lf.read(8)
 labels = lf.read()
+
+# testing
+tf = open("mnist/t10k-images-idx3-ubyte", "rb")
+tf.read(16)
+test_images = tf.read()
+
+tlf = open("mnist/t10k-labels-idx1-ubyte", "rb")
+tlf.read(8)
+test_labels = tlf.read()
+
 
 # get the pixels for a image
 def get_image(i):
@@ -117,16 +127,42 @@ def train_step(i):
     return loss(out, target)
 
 
+# draw a test picture and show the network's guess
+def show(i):
+    start = i * 784
+    raw = test_images[start:start + 784]
+
+    # draw it
+    for r in range(28):
+        line = ""
+        for c in range(28):
+            if raw[r * 28 + c] > 128:
+                line += "##"
+            else:
+                line += "  "
+        print(line)
+
+    # guess
+    img = []
+    for p in raw:
+        img.append(p / 255)
+    h = layer(img, hidden_w, hidden_b)
+    out = layer(h, out_w, out_b)
+    print("guess:", out.index(max(out)), "answer:", test_labels[i])
+
+
 # training loop
 def train(steps):
     for i in range(steps):
         idx = random.randint(0, 59999)
         l = train_step(idx)
         print(i, l)
-        
+
 
 t = int(input('training steps: '))
 train(t)
 with open("weights.json", "w") as f:
     json.dump([hidden_w, hidden_b, out_w, out_b], f)
-    print("saved weights")
+print("saved weights")
+
+show(0)
