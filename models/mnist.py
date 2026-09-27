@@ -1,3 +1,5 @@
+import json 
+import os
 import math
 import random
 
@@ -117,4 +119,8 @@ def train(steps):
         l = train_step(idx)
         print(i, l)
         
-train(1000)
+
+t = int(input('training steps: '))
+train(t)
+with open("weights.json", "w") as f:
+    json.dump([hidden_w, hidden_b, out_w, out_b], f)
