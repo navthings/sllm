@@ -1,0 +1,1 @@
+building a llm from scratch, no ml libraries, in code, for practice
