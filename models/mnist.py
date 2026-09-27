@@ -1,26 +1,17 @@
 f = open("mnist/train-images-idx3-ubyte", "rb")
-
-header = f.read(16)
-magic = int.from_bytes(header[0:4], "big")
-count = int.from_bytes(header[4:8], "big")
-rows = int.from_bytes(header[8:12], "big")
-cols = int.from_bytes(header[12:16], "big")
-print(magic, count, rows, cols)
-
-pixels = f.read(784)
-
-for r in range(28):
-    line = ""
-    for c in range(28):
-        p = pixels[r * 28 + c]
-        if p > 128:
-            line += "##"
-        else:
-            line += "  "
-    print(line)
-    
+f.read(16)
+images = f.read()
 
 lf = open("mnist/train-labels-idx1-ubyte", "rb")
-lheader = lf.read(8)
-label = lf.read(1)
-print(label[0])
+lf.read(8)
+labels = lf.read()
+
+def get_image(i):
+    start = i * 784
+    raw = images[start:start + 784]
+    pixels = []
+    # loop through raw, add each pixel divided by 255 to pixels
+    return pixels
+
+img = get_image(0)
+print(len(img), max(img), labels[0])
