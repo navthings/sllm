@@ -50,3 +50,6 @@ for i in range(steps):
     
 
 print(weights, bias)
+
+print(neuron([1, 0], weights, bias))
+print(neuron([1, 1], weights, bias))
