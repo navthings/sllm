@@ -22,11 +22,13 @@ def loss(weights, bias):
         total += (prediction - target) ** 2 # add (prediction - target) squared to total
     return total
 
-# [sunny, rainy]
-print(loss([0.5, -1], 0.1))
-print(loss([2, -4], 0.4))
 
-before = loss([0.5, -1], 0.1)
-after = loss([0.5, -1 + 0.001], 0.1)
-print(before, after)
-print((after - before) / 0.001)
+def gradients(weights, bias):
+    step = 0.001
+    base = loss(weights, bias)
+
+    g_sun = (loss([weights[0] + step, weights[1]], bias) - base) / step
+    g_rain = (loss([weights[0], weights[1] + step], bias) - base) / step 
+    g_bias = (loss(weights, bias + step) - base) / step
+
+    return g_sun, g_rain, g_bias
