@@ -1,6 +1,7 @@
 import math
 import random
 
+# load data
 f = open("mnist/train-images-idx3-ubyte", "rb")
 f.read(16)
 images = f.read()
@@ -19,6 +20,7 @@ def get_image(i):
     return pixels
 
 
+# network pieces
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
@@ -62,11 +64,14 @@ def loss(out, target):
     return total
 
 
+# build the network
 hidden_w, hidden_b = make_layer(784, 32)
 out_w, out_b = make_layer(32, 10)
 
 lr = 0.5
 
+
+# one training step on picture i
 def train_step(i):
     # guess
     img = get_image(i)
@@ -103,3 +108,13 @@ def train_step(i):
         hidden_b[j] -= lr * hidden_blame[j]
 
     return loss(out, target)
+
+
+# training loop
+def train(steps):
+    for i in range(steps):
+        idx = random.randint(0, 59999)
+        l = train_step(idx)
+        print(i, l)
+        
+train(1000)
