@@ -1,5 +1,7 @@
 import math
 
+steps = int(input('training steps: '))
+
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
@@ -32,3 +34,19 @@ def gradients(weights, bias):
     g_bias = (loss(weights, bias + step) - base) / step
 
     return g_sun, g_rain, g_bias
+
+weights = [0.0, 0.0]
+bias = 0.0
+lr = 0.5
+
+
+for i in range(steps):
+    g_sun, g_rain, g_bias = gradients(weights, bias)
+    
+    weights[0] -= lr * g_sun
+    weights[1] -= lr * g_rain
+    bias -= lr * g_bias
+    print(i, loss(weights, bias))
+    
+
+print(weights, bias)
