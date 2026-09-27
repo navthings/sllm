@@ -77,8 +77,8 @@ def loss(out, target):
 
 
 # build the network
-if os.path.exists("weights.json"):
-    with open("weights.json") as f:
+if os.path.exists("reversed_weights.json"):
+    with open("reversed_weights.json") as f:
         hidden_w, hidden_b, out_w, out_b = json.load(f)
     print("loaded saved weights")
 else:
@@ -161,7 +161,7 @@ def train(steps):
 
 t = int(input('training steps: '))
 train(t)
-with open("weights.json", "w") as f:
+with open("reversed_weights.json", "w") as f:
     json.dump([hidden_w, hidden_b, out_w, out_b], f)
 print("saved weights")
 
