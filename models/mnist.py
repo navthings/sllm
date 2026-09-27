@@ -22,3 +22,5 @@ for r in range(28):
 
 lf = open("mnist/train-labels-idx1-ubyte", "rb")
 lheader = lf.read(8)
+label = lf.read(1)
+print(label[0])
