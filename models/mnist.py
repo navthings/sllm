@@ -165,4 +165,4 @@ with open("weights.json", "w") as f:
     json.dump([hidden_w, hidden_b, out_w, out_b], f)
 print("saved weights")
 
-show(0)
+show(random.randint(0, 9999))
